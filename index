@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Certificação Conselheiros RPPS - GOIANAPREVI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { 
+            --goiana-green: #147e14; 
+            --goiana-accent: #32cd32;
+            --primary: #1a2a6c; 
+            --accent: #f39c12; 
+        }
+        
+        body { background: #f2f5f4; font-family: 'Open Sans', sans-serif; margin: 0; }
+
+        /* BARRA INSTITUCIONAL GOIANAPREVI (Conforme image_4f0abf.png) */
+        .goiana-header-bar {
+            background-color: var(--goiana-green);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border-bottom: 3px solid var(--goiana-accent);
+        }
+        .header-central { text-align: center; }
+        .header-central h1 { margin: 0; font-size: 1.6rem; font-weight: bold; letter-spacing: 1px; }
+        .header-central p { margin: 0; font-size: 0.85rem; opacity: 0.9; }
+        .header-right { position: absolute; right: 20px; font-size: 0.85rem; }
+
+        .wrapper { display: flex; min-height: calc(100vh - 80px); }
+        
+        /* Sidebar */
+        #sidebar { 
+            min-width: 260px; background: #1a2a6c; color: white; padding: 20px; 
+            display: flex; flex-direction: column; border-right: 1px solid rgba(0,0,0,0.1);
+        }
+        .q-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .q-btn { 
+            aspect-ratio: 1; border: 1px solid rgba(255,255,255,0.3); background: none; 
+            color: white; border-radius: 4px; font-weight: bold; transition: 0.2s;
+        }
+        .q-btn.active { border: 2px solid var(--accent); background: rgba(243, 156, 18, 0.2); }
+        .q-btn.answered { background: #27ae60; border: none; }
+
+        #content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        .question-card { background: white; border-radius: 4px; padding: 30px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Alternativas */
+        .option-row { display: flex; align-items: flex-start; margin-bottom: 18px; width: 100%; }
+        .strike-btn { background: none; border: none; color: #ccc; padding: 5px; margin-right: 10px; cursor: pointer; font-size: 1.2rem; }
+        .strike-btn.active { color: #e74c3c; }
+        .option-content { flex-grow: 1; display: flex; align-items: flex-start; cursor: pointer; padding: 5px; border-radius: 5px; }
+        .letter-circle { 
+            min-width: 35px; height: 35px; border: 1px solid var(--accent); color: var(--accent); 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            margin-right: 15px; font-weight: bold; flex-shrink: 0;
+        }
+        .option-row.selected .letter-circle { background: var(--accent); color: white; }
+        .option-row.strikethrough { opacity: 0.4; }
+        .option-row.strikethrough .option-text { text-decoration: line-through; }
+
+        /* Feedback e Botões */
+        .btn-responder { background-color: #f39c12; border: none; color: white; padding: 12px 40px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        .feedback-box { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; }
+        .correct-bg { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .wrong-bg { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="goiana-header-bar">
+    <div class="header-central">
+        <h1>GOIANAPREVI</h1>
+        <p>Plataforma de Simulação de Certificação – RPPS</p>
+    </div>
+    <div class="header-right">
+        Goiana - PE
+    </div>
+</div>
+
+<div class="wrapper">
+    <nav id="sidebar" class="hidden">
+        <h6 class="text-center fw-bold mb-4 opacity-75">MAPA DA PROVA</h6>
+        <div id="questionGrid" class="q-grid"></div>
+        <hr class="opacity-25 mt-auto">
+        <button class="btn btn-outline-light w-100 py-2 fw-bold" onclick="location.reload()">REINICIAR / SAIR</button>
+    </nav>
+
+    <main id="content">
+        <div id="startScreen" class="text-center py-5">
+            <h2 class="fw-bold mb-5">SELECIONE O MODO DE ESTUDO</h2>
+            <div class="d-grid gap-3 col-md-5 mx-auto">
+                <button onclick="initApp('treino')" class="btn btn-primary btn-lg p-4">MODO TREINAMENTO</button>
+                <button onclick="initApp('simulado')" class="btn btn-outline-primary btn-lg p-4">MODO SIMULADO</button>
+            </div>
+        </div>
+
+        <div id="quizScreen" class="hidden">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span id="themeTag" class="text-primary fw-bold small"></span>
+                <span id="qCounter" class="badge bg-white text-dark border p-2"></span>
+            </div>
+            
+            <div class="question-card">
+                <div id="questionText" class="fs-5 mb-5 fw-normal text-secondary"></div>
+                <div id="optionsBox"></div>
+                <div id="feedbackArea"></div>
+                <div id="confirmBox" class="mt-5 hidden">
+                    <button class="btn-responder" onclick="confirmAnswer()">Responder</button>
+                </div>
+            </div>
+            
+            <div class="mt-4 d-flex justify-content-between">
+                <button class="btn btn-link text-decoration-none text-muted" id="btnPrev" onclick="move(-1)">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <div>
+                    <button class="btn btn-light border px-4" id="btnNext" onclick="move(1)">Próxima</button>
+                    <button class="btn btn-success px-4 hidden" id="btnFinish" onclick="validateFinish()">Finalizar Simulado</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultScreen" class="hidden text-center py-5">
+            <div class="card shadow p-5 mx-auto" style="max-width: 500px; border-radius: 15px;">
+                <h2 class="fw-bold mb-4">Resultado da Prova</h2>
+                <div class="display-1 fw-bold text-primary mb-2" id="finalScore"></div>
+                <p class="lead text-muted mb-4" id="finalDetails"></p>
+                <div id="scoreStatus" class="h4 fw-bold mb-4"></div>
+                <button class="btn btn-primary btn-lg w-100" onclick="location.reload()">Voltar ao Início</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+    .auth-container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .auth-toggle { cursor: pointer; color: var(--goiana-green); font-weight: bold; text-decoration: underline; }
+</style>
+
+<div id="authScreen" class="container">
+    <div class="auth-container">
+        <h3 class="text-center fw-bold mb-4" id="authTitle">Acesso ao Simulador</h3>
+        
+        <div id="loginForm">
+            <div class="mb-3">
+                <label class="form-label">E-mail Institucional</label>
+                <input type="email" id="email" class="form-control" placeholder="exemplo@goiana.pe.gov.br">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Senha</label>
+                <input type="password" id="password" class="form-control">
+            </div>
+            <button onclick="handleLogin()" class="btn btn-success w-100 fw-bold py-2">ENTRAR</button>
+            <p class="mt-3 text-center small">Não tem conta? <span class="auth-toggle" onclick="toggleAuth(true)">Cadastre-se</span></p>
+        </div>
+
+        <div id="registerForm" class="hidden">
+            <div class="mb-3">
+                <label class="form-label">Nome Completo</label>
+                <input type="text" id="regNome" class="form-control">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">E-mail</label>
+                <input type="email" id="regEmail" class="form-control">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Senha</label>
+                <input type="password" id="regPassword" class="form-control">
+            </div>
+            <button onclick="handleRegister()" class="btn btn-primary w-100 fw-bold py-2">SOLICITAR ACESSO</button>
+            <p class="mt-3 text-center small">Já tem conta? <span class="auth-toggle" onclick="toggleAuth(false)">Fazer Login</span></p>
+        </div>
+    </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ffkrgyostvypallnstdr.supabase.co'; // Pegue no seu projeto
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZma3JneW9zdHZ5cGFsbG5zdGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDQwOTAsImV4cCI6MjA5MTMyMDA5MH0.12VVVs1fwJzzZqNsanF05R44YOV5B9RJNsIJ8jPJ7eg';
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let userSession = null;
+
+// Função para trocar entre Login e Cadastro
+function toggleAuth(isRegister) {
+    document.getElementById('loginForm').classList.toggle('hidden', isRegister);
+    document.getElementById('registerForm').classList.toggle('hidden', !isRegister);
+    document.getElementById('authTitle').innerText = isRegister ? "Solicitar Acesso" : "Acesso ao Simulador";
+}
+
+// FUNÇÃO DE CADASTRO
+async function handleRegister() {
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const nome = document.getElementById('regNome').value;
+
+    const { data, error } = await _supabase.auth.signUp({ email, password });
+
+    if (error) return alert("Erro: " + error.message);
+
+    if (data.user) {
+        // Salva na tabela 'perfis' que você criou
+        const { error: pError } = await _supabase.from('perfis').insert([
+            { id: data.user.id, nome_completo: nome, autorizado: false }
+        ]);
+        
+        if (pError) console.error(pError);
+        alert("Cadastro realizado! Aguarde a autorização do Analista Danilo Brandão para acessar.");
+        location.reload();
+    }
+}
+
+// FUNÇÃO DE LOGIN COM VERIFICAÇÃO DE MASTER
+async function handleLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+    if (error) return alert("Acesso negado: " + error.message);
+
+    // Busca na tabela 'perfis' se você autorizou
+    const { data: perfil } = await _supabase
+        .from('perfis')
+        .select('autorizado')
+        .eq('id', data.user.id)
+        .single();
+
+    if (perfil && perfil.autorizado) {
+        userSession = data.user;
+        document.getElementById('authScreen').classList.add('hidden');
+        document.getElementById('content').parentElement.classList.remove('hidden'); // Mostra o simulador
+        alert("Acesso liberado! Bom estudo.");
+    } else {
+        alert("Sua conta está pendente de autorização pelo Administrador.");
+        await _supabase.auth.signOut();
+    }
+}
+
+// NO SEU showResults ORIGINAL, ADICIONE ISSO NO FINAL:
+async function salvarResultado(acertos) {
+    if (!userSession) return;
+    const notaString = `Data: ${new Date().toLocaleDateString()} - Nota: ${acertos}/20`;
+    
+    // Atualiza a tabela 'perfis' com a nova nota
+    await _supabase.from('perfis')
+        .update({ historico_notas: notaString })
+        .eq('id', userSession.id);
+}
+</script>
+
+
+
+
+<script>
+const URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSKJYXZddheRwwSLmYy-Ms8iMx7xm1gEzY42p79mmYdwn6x5F9afR-H2ukkoTx9x-5QsJKBcT7nvYW/pub?output=csv';
+let raw = [], quiz = [], currentIdx = 0, answers = {}, strikethroughs = {}, isConfirmed = {}, mode = '';
+
+function parseCSV(text) {
+    const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+    return text.split(/\r?\n/).map(line => line.split(regex).map(val => val.replace(/^"|"$/g, '').trim()));
+}
+
+async function initApp(m) {
+    mode = m;
+    const res = await fetch(URL);
+    const data = parseCSV(await res.text()).slice(1);
+    raw = data.map(r => ({ text: r[0], correct: r[2]?.trim().toLowerCase() === 'certo', theme: r[3] })).filter(r => r.text);
+    buildQuiz();
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('quizScreen').classList.remove('hidden');
+    document.getElementById('sidebar').classList.remove('hidden');
+    render();
+}
+
+function buildQuiz() {
+    quiz = [];
+    const themes = [...new Set(raw.map(d => d.theme))];
+    for(let i=0; i<20; i++) {
+        const theme = themes[i % themes.length];
+        const wantCorrect = Math.random() > 0.5;
+        let main = raw.filter(d => d.theme === theme && d.correct === wantCorrect)[0] || raw.filter(d => d.theme === theme)[0];
+        let decoys = raw.filter(d => d.text !== main.text && d.correct !== main.correct).sort(() => 0.5 - Math.random()).slice(0, 3);
+        quiz.push({
+            title: main.text.includes('?') ? main.text : `Sobre "${theme}", assinale a alternativa ${main.correct ? 'CORRETA' : 'INCORRETA'}:`,
+            options: [main, ...decoys].sort(() => 0.5 - Math.random()),
+            key: main.text, theme: theme
+        });
+    }
+}
+
+function render() {
+    const q = quiz[currentIdx];
+    document.getElementById('questionText').innerText = q.title;
+    document.getElementById('themeTag').innerText = q.theme.toUpperCase();
+    document.getElementById('qCounter').innerText = `QUESTÃO ${currentIdx + 1} DE 20`;
+    const box = document.getElementById('optionsBox'); box.innerHTML = '';
+    const feedback = document.getElementById('feedbackArea'); feedback.innerHTML = '';
+
+    q.options.forEach((opt, idx) => {
+        const letter = String.fromCharCode(65+idx);
+        opt.letter = letter;
+        const struck = (strikethroughs[currentIdx] || []).includes(opt.text);
+        const selected = answers[currentIdx] === opt.text;
+        const row = document.createElement('div');
+        row.className = `option-row ${struck ? 'strikethrough' : ''} ${selected ? 'selected' : ''}`;
+        row.innerHTML = `
+            <button class="strike-btn ${struck ? 'active' : ''}" onclick="toggleStrike('${opt.text.replace(/'/g, "\\'")}')"><i class="bi bi-scissors"></i></button>
+            <div class="option-content" onclick="select('${opt.text.replace(/'/g, "\\'")}')">
+                <div class="letter-circle">${letter}</div>
+                <div class="option-text">${opt.text}</div>
+            </div>`;
+        box.appendChild(row);
+
+        if (mode === 'treino' && isConfirmed[currentIdx] && selected) {
+            if (opt.text === q.key) feedback.innerHTML = `<div class="feedback-box correct-bg">CERTO! Você acertou.</div>`;
+            else feedback.innerHTML = `<div class="feedback-box wrong-bg">ERRADO! A correta é a (${q.options.find(o => o.text === q.key).letter}).</div>`;
+        }
+    });
+
+    document.getElementById('confirmBox').classList.toggle('hidden', !(mode === 'treino' && answers[currentIdx] && !isConfirmed[currentIdx]));
+    document.getElementById('btnPrev').style.visibility = currentIdx === 0 ? 'hidden' : 'visible';
+    document.getElementById('btnNext').classList.toggle('hidden', currentIdx === 19);
+    
+    // Mostra o botão Finalizar apenas no Simulado e na última questão
+    document.getElementById('btnFinish').classList.toggle('hidden', !(mode === 'simulado' && currentIdx === 19));
+    
+    updateSidebar();
+}
+
+function select(txt) { if (mode === 'treino' && isConfirmed[currentIdx]) return; answers[currentIdx] = txt; render(); }
+function confirmAnswer() { isConfirmed[currentIdx] = true; render(); }
+function move(n) { currentIdx += n; render(); }
+function toggleStrike(txt) {
+    if (!strikethroughs[currentIdx]) strikethroughs[currentIdx] = [];
+    const i = strikethroughs[currentIdx].indexOf(txt);
+    if (i > -1) strikethroughs[currentIdx].splice(i, 1);
+    else { strikethroughs[currentIdx].push(txt); if(answers[currentIdx] === txt) delete answers[currentIdx]; }
+    render();
+}
+
+function updateSidebar() {
+    const grid = document.getElementById('questionGrid'); grid.innerHTML = '';
+    quiz.forEach((_, i) => {
+        const b = document.createElement('button');
+        b.className = `q-btn ${i === currentIdx ? 'active' : ''} ${answers[i] ? 'answered' : ''}`;
+        b.innerText = i + 1;
+        b.onclick = () => { currentIdx = i; render(); };
+        grid.appendChild(b);
+    });
+}
+
+function validateFinish() {
+    const totalAnswered = Object.keys(answers).length;
+    if (totalAnswered < 20) {
+        const missing = 20 - totalAnswered;
+        if (confirm(`Atenção: Existem ${missing} questões sem resposta. Deseja finalizar o simulado mesmo assim?`)) {
+            showResults();
+        }
+    } else {
+        showResults();
+    }
+}
+
+function showResults() {
+    let hits = 0;
+    quiz.forEach((q, i) => { if(answers[i] === q.key) hits++; });
+    const percent = Math.round((hits / 20) * 100);
+
+    document.getElementById('quizScreen').classList.add('hidden');
+    document.getElementById('sidebar').classList.add('hidden');
+    document.getElementById('resultScreen').classList.remove('hidden');
+
+    document.getElementById('finalScore').innerText = `${percent}%`;
+    document.getElementById('finalDetails').innerText = `Você acertou ${hits} de 20 questões.`;
+    
+    const status = document.getElementById('scoreStatus');
+    if (percent >= 50) { 
+        status.innerText = "APROVADO!"; status.className = "h4 fw-bold mb-4 text-success";
+    } else {
+        status.innerText = "NÃO ATINGIU O MÍNIMO (50%)"; status.className = "h4 fw-bold mb-4 text-danger";
+    }
+}
+</script>
+</body>
+</html>
