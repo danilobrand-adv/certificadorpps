@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador RPPS - GOIANAPREVI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { 
+            --goiana-green: #228b22; 
+            --goiana-accent: #32cd32;
+            --primary: #1a2a6c; 
+            --accent: #f39c12; 
+        }
+        
+        body { background: #f4f7f6; font-family: 'Open Sans', sans-serif; margin: 0; }
+
+        /* HEADER INSTITUCIONAL */
+        .goiana-header-bar {
+            background-color: var(--goiana-green); color: white; padding: 15px 20px;
+            display: flex; justify-content: center; align-items: center;
+            position: relative; border-bottom: 3px solid var(--goiana-accent);
+        }
+        .header-central { text-align: center; }
+        .header-central h1 { margin: 0; font-size: 1.6rem; font-weight: bold; letter-spacing: 1px; }
+        .header-central p { margin: 0; font-size: 0.85rem; opacity: 0.9; }
+        .header-right { position: absolute; right: 20px; font-size: 0.85rem; }
+
+        .wrapper { display: flex; min-height: calc(100vh - 80px); }
+        
+        /* SIDEBAR */
+        #sidebar { 
+            min-width: 260px; background: #1a2a6c; color: white; padding: 20px; 
+            display: flex; flex-direction: column; border-right: 1px solid rgba(0,0,0,0.1);
+        }
+        .q-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .q-btn { 
+            aspect-ratio: 1; border: 1px solid rgba(255,255,255,0.3); background: none; 
+            color: white; border-radius: 4px; font-weight: bold; transition: 0.2s;
+        }
+        .q-btn.active { border: 2px solid var(--accent); background: rgba(243, 156, 18, 0.2); }
+        .q-btn.answered { background: #27ae60; border: none; }
+
+        #content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        .question-card { background: white; border-radius: 4px; padding: 30px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* ALTERNATIVAS */
+        .option-row { display: flex; align-items: flex-start; margin-bottom: 18px; width: 100%; }
+        .strike-btn { background: none; border: none; color: #ccc; padding: 5px; margin-right: 10px; cursor: pointer; font-size: 1.2rem; }
+        .strike-btn.active { color: #e74c3c; }
+        .option-content { flex-grow: 1; display: flex; align-items: flex-start; cursor: pointer; padding: 5px; border-radius: 5px; }
+        
+        .letter-circle { 
+            min-width: 35px; height: 35px; border: 1px solid #333; color: #333; 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            margin-right: 15px; font-weight: bold; flex-shrink: 0;
+        }
+        .option-row.selected .letter-circle { background: var(--accent); color: white; border-color: var(--accent); }
+        .option-row.strikethrough { opacity: 0.4; }
+        .option-row.strikethrough .option-text { text-decoration: line-through; }
+
+        /* FEEDBACK */
+        .btn-responder { background-color: var(--accent); border: none; color: white; padding: 12px 40px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        .feedback-box { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; }
+        .correct-bg { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .wrong-bg { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="goiana-header-bar">
+    <div class="header-central">
+        <h1>GOIANAPREVI</h1>
+        <p>Simulador de Certificação de Conselheiros RPPS</p>
+    </div>
+    <div class="header-right">Goiana - PE</div>
+</div>
+
+<div class="wrapper">
+    <nav id="sidebar" class="hidden">
+        <h6 class="text-center fw-bold mb-4">MAPA DA PROVA</h6>
+        <div id="questionGrid" class="q-grid"></div>
+        <hr class="opacity-25 mt-auto">
+        <button class="btn btn-outline-light w-100 py-2 fw-bold" onclick="location.reload()">SAIR / REINICIAR</button>
+    </nav>
+
+    <main id="content">
+        <div id="startScreen" class="text-center py-5">
+            <h2 class="fw-bold mb-5">SIMULADOR DE QUESTÕES</h2>
+            <div class="d-grid gap-3 col-md-5 mx-auto">
+                <button onclick="initApp('treino')" class="btn btn-primary btn-lg p-4 fw-bold">MODO TREINAMENTO</button>
+                <button onclick="initApp('simulado')" class="btn btn-outline-primary btn-lg p-4 fw-bold">MODO SIMULADO</button>
+            </div>
+        </div>
+
+        <div id="quizScreen" class="hidden">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span id="themeTag" class="text-primary fw-bold small"></span>
+                <span id="qCounter" class="badge bg-white text-dark border p-2"></span>
+            </div>
+            
+            <div class="question-card">
+                <div id="questionText" class="fs-5 mb-5 fw-normal text-secondary"></div>
+                <div id="optionsBox"></div>
+                <div id="feedbackArea"></div>
+                <div id="confirmBox" class="mt-5 hidden text-end">
+                    <button class="btn-responder" onclick="confirmAnswer()">Responder</button>
+                </div>
+            </div>
+            
+            <div class="mt-4 d-flex justify-content-between">
+                <button class="btn btn-link text-decoration-none text-muted" id="btnPrev" onclick="move(-1)"><i class="bi bi-chevron-left"></i> Anterior</button>
+                <div>
+                    <button class="btn btn-light border px-4" id="btnNext" onclick="move(1)">Próxima</button>
+                    <button class="btn btn-success px-4 hidden" id="btnFinish" onclick="validateFinish()">Finalizar Simulado</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultScreen" class="hidden text-center py-5">
+            <div class="card shadow p-5 mx-auto" style="max-width: 500px; border-radius: 15px;">
+                <h2 class="fw-bold mb-4">Resultado da Prova</h2>
+                <div class="display-1 fw-bold text-primary mb-2" id="finalScore"></div>
+                <p class="lead text-muted mb-4" id="finalDetails"></p>
+                <div id="scoreStatus" class="h4 fw-bold mb-4"></div>
+                <button class="btn btn-primary btn-lg w-100" onclick="location.reload()">Voltar ao Início</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+const URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=0&single=true&output=csv';
+let raw = [], quiz = [], currentIdx = 0, answers = {}, strikethroughs = {}, isConfirmed = {}, mode = '';
+
+function parseCSV(text) {
+    const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+    return text.split(/\r?\n/).map(line => line.split(regex).map(val => val.replace(/^"|"$/g, '').trim()));
+}
+
+async function initApp(m) {
+    mode = m;
+    const res = await fetch(URL);
+    const data = parseCSV(await res.text()).slice(1);
+    
+    // Mapeamento das colunas (A: Pergunta, B: AltA, C: AltB, D: AltC, E: AltD, F: Gabarito, G: Tema)
+    raw = data.map(r => ({
+        pergunta: r[0],
+        alts: [
+            { text: r[1], correct: r[5] === 'A' },
+            { text: r[2], correct: r[5] === 'B' },
+            { text: r[3], correct: r[5] === 'C' },
+            { text: r[4], correct: r[5] === 'D' }
+        ],
+        theme: r[6] || 'Geral'
+    })).filter(r => r.pergunta);
+
+    buildQuiz();
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('quizScreen').classList.remove('hidden');
+    document.getElementById('sidebar').classList.remove('hidden');
+    render();
+}
+
+function buildQuiz() {
+    quiz = [];
+    // Sorteia 20 questões do banco
+    let selected = raw.sort(() => 0.5 - Math.random()).slice(0, 20);
+    
+    selected.forEach(q => {
+        // EMBARALHAMENTO DAS ALTERNATIVAS
+        let shuffledAlts = [...q.alts].sort(() => 0.5 - Math.random());
+        quiz.push({
+            title: q.pergunta,
+            options: shuffledAlts,
+            theme: q.theme
+        });
+    });
+}
+
+function render() {
+    const q = quiz[currentIdx];
+    document.getElementById('questionText').innerText = q.title;
+    document.getElementById('themeTag').innerText = q.theme.toUpperCase();
+    document.getElementById('qCounter').innerText = `QUESTÃO ${currentIdx + 1} DE 20`;
+    
+    const box = document.getElementById('optionsBox'); box.innerHTML = '';
+    const feedback = document.getElementById('feedbackArea'); feedback.innerHTML = '';
+
+    q.options.forEach((opt, idx) => {
+        const letter = String.fromCharCode(65 + idx);
+        const struck = (strikethroughs[currentIdx] || []).includes(opt.text);
+        const selected = answers[currentIdx] === opt.text;
+
+        const row = document.createElement('div');
+        row.className = `option-row ${struck ? 'strikethrough' : ''} ${selected ? 'selected' : ''}`;
+        row.innerHTML = `
+            <button class="strike-btn ${struck ? 'active' : ''}" onclick="toggleStrike('${opt.text.replace(/'/g, "\\'")}')"><i class="bi bi-scissors"></i></button>
+            <div class="option-content" onclick="select('${opt.text.replace(/'/g, "\\'")}')">
+                <div class="letter-circle">${letter}</div>
+                <div class="option-text">${opt.text}</div>
+            </div>`;
+        box.appendChild(row);
+
+        // Feedback no Modo Treino
+        if (mode === 'treino' && isConfirmed[currentIdx] && selected) {
+            if (opt.correct) feedback.innerHTML = `<div class="feedback-box correct-bg">CERTO! Você acertou.</div>`;
+            else {
+                const correctLetter = String.fromCharCode(65 + q.options.findIndex(o => o.correct));
+                feedback.innerHTML = `<div class="feedback-box wrong-bg">ERRADO! A correta é a (${correctLetter}).</div>`;
+            }
+        }
+    });
+
+    document.getElementById('confirmBox').classList.toggle('hidden', !(mode === 'treino' && answers[currentIdx] && !isConfirmed[currentIdx]));
+    document.getElementById('btnPrev').style.visibility = currentIdx === 0 ? 'hidden' : 'visible';
+    document.getElementById('btnNext').classList.toggle('hidden', currentIdx === 19);
+    document.getElementById('btnFinish').classList.toggle('hidden', !(mode === 'simulado' && currentIdx === 19));
+    updateSidebar();
+}
+
+function select(txt) { if (mode === 'treino' && isConfirmed[currentIdx]) return; answers[currentIdx] = txt; render(); }
+function confirmAnswer() { isConfirmed[currentIdx] = true; render(); }
+function move(n) { currentIdx += n; render(); }
+function toggleStrike(txt) {
+    if (!strikethroughs[currentIdx]) strikethroughs[currentIdx] = [];
+    const i = strikethroughs[currentIdx].indexOf(txt);
+    if (i > -1) strikethroughs[currentIdx].splice(i, 1);
+    else { strikethroughs[currentIdx].push(txt); if(answers[currentIdx] === txt) delete answers[currentIdx]; }
+    render();
+}
+
+function updateSidebar() {
+    const grid = document.getElementById('questionGrid'); grid.innerHTML = '';
+    quiz.forEach((_, i) => {
+        const b = document.createElement('button');
+        b.className = `q-btn ${i === currentIdx ? 'active' : ''} ${answers[i] ? 'answered' : ''}`;
+        b.innerText = i + 1;
+        b.onclick = () => { currentIdx = i; render(); };
+        grid.appendChild(b);
+    });
+}
+
+function validateFinish() {
+    const totalAnswered = Object.keys(answers).length;
+    if (totalAnswered < 20) {
+        if (confirm(`Atenção: Existem ${20 - totalAnswered} questões sem resposta. Deseja finalizar mesmo assim?`)) showResults();
+    } else showResults();
+}
+
+function showResults() {
+    let hits = 0;
+    quiz.forEach((q, i) => {
+        const userChoice = answers[i];
+        const correctOpt = q.options.find(o => o.correct);
+        if (userChoice === correctOpt?.text) hits++;
+    });
+    const p = Math.round((hits / 20) * 100);
+    document.getElementById('quizScreen').classList.add('hidden');
+    document.getElementById('sidebar').classList.add('hidden');
+    document.getElementById('resultScreen').classList.remove('hidden');
+    document.getElementById('finalScore').innerText = `${p}%`;
+    document.getElementById('finalDetails').innerText = `Acertos: ${hits} de 20.`;
+    const status = document.getElementById('scoreStatus');
+    status.innerText = p >= 70 ? "APROVADO!" : "REPROVADO (Mínimo 70%)";
+    status.className = `h4 fw-bold mb-4 ${p >= 70 ? 'text-success' : 'text-danger'}`;
+}
+</script>
+</body>
+</html>
