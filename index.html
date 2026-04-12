@@ -16,7 +16,6 @@
         
         body { background: #f2f5f4; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
 
-         /* Cabeçalho Ajustado com Logo */
         .goiana-header-bar {
             background-color: var(--goiana-green); 
             color: white; 
@@ -87,6 +86,9 @@
 
         .auth-container { max-width: 420px; margin: 60px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .hidden { display: none !important; }
+
+        .select-card { background: white; transition: 0.3s; cursor: pointer; }
+        .select-card:hover { transform: translateY(-5px); border-color: var(--goiana-accent) !important; }
     </style>
 </head>
 <body>
@@ -147,17 +149,39 @@
 
     <main id="content">
         <div id="startScreen" class="text-center py-5">
-            <h2 class="fw-bold mb-2">BEM-VINDO AO SIMULADOR</h2>
-            <p class="text-muted mb-5">Escolha o método de estudo para iniciar</p>
-            <div class="d-grid gap-3 col-md-6 mx-auto">
-                <button onclick="initApp('treino')" class="btn btn-white border shadow-sm p-4 text-start">
-                    <h5 class="fw-bold mb-1 text-success"><i class="bi bi-book me-2"></i> Modo Treinamento</h5>
-                    <p class="small text-muted mb-0">Veja o gabarito imediatamente após cada resposta. Ideal para aprender o conteúdo.</p>
-                </button>
-                <button onclick="initApp('simulado')" class="btn btn-white border shadow-sm p-4 text-start">
-                    <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-stopwatch me-2"></i> Modo Simulado</h5>
-                    <p class="small text-muted mb-0">20 questões aleatórias com resultado apenas ao final. Simula a experiência real.</p>
-                </button>
+            <div id="step1">
+                <h2 class="fw-bold mb-2">BEM-VINDO AO SIMULADOR</h2>
+                <p class="text-muted mb-5">Selecione o seu objetivo de certificação:</p>
+                <div class="d-grid gap-3 col-md-6 mx-auto">
+                    <button onclick="selectType('dirigente', 'Dirigente')" class="btn select-card border shadow-sm p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-person-badge me-2"></i> Prova para Dirigente</h5>
+                        <p class="small text-muted mb-0">Conteúdo focado em gestão e responsabilidade administrativa.</p>
+                    </button>
+                    <button onclick="selectType('conselho', 'Conselho')" class="btn select-card border shadow-sm p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-people me-2"></i> Prova para Conselho</h5>
+                        <p class="small text-muted mb-0">Foco em fiscalização, atuação deliberativa e normas do RPPS.</p>
+                    </button>
+                    <button onclick="selectType('comite', 'Comitê')" class="btn select-card border shadow-sm p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-graph-up-arrow me-2"></i> Prova para Comitê de Inv.</h5>
+                        <p class="small text-muted mb-0">Foco técnico em mercado financeiro e política de investimentos.</p>
+                    </button>
+                </div>
+            </div>
+
+            <div id="step2" class="hidden">
+                <h2 class="fw-bold mb-2" id="selectedTitle">MODO DE ESTUDO</h2>
+                <p class="text-muted mb-5">Escolha como deseja praticar hoje</p>
+                <div class="d-grid gap-3 col-md-6 mx-auto">
+                    <button onclick="initApp('treino')" class="btn btn-white border shadow-sm p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-success"><i class="bi bi-book me-2"></i> Modo Treinamento</h5>
+                        <p class="small text-muted mb-0">Acessa o banco de dados completo para estudo.</p>
+                    </button>
+                    <button onclick="initApp('simulado')" class="btn btn-white border shadow-sm p-4 text-start">
+                        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-stopwatch me-2"></i> Modo Simulado</h5>
+                        <p class="small text-muted mb-0">Acessa a planilha específica de questões de prova.</p>
+                    </button>
+                    <button onclick="resetSteps()" class="btn btn-link btn-sm text-muted">Voltar para escolha de prova</button>
+                </div>
             </div>
         </div>
 
@@ -203,12 +227,40 @@ const SUPABASE_URL = 'https://ffkrgyostvypallnstdr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZma3JneW9zdHZ5cGFsbG5zdGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDQwOTAsImV4cCI6MjA5MTMyMDA5MH0.12VVVs1fwJzzZqNsanF05R44YOV5B9RJNsIJ8jPJ7eg';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let userSession = null;
-const URL_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=0&single=true&output=csv';
+// 2. ESTRUTURA DE PLANILHAS SEPARADAS POR CARGO E POR MODO
+// Altere as URLs abaixo para as planilhas corretas do seu Google Sheets
+const PLANILHAS = {
+    dirigente: {
+        treino: 'URL_PLANILHA_DIRIGENTE_TREINO',
+        simulado: 'URL_PLANILHA_DIRIGENTE_SIMULADO'
+    },
+    conselho: {
+        treino: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=0&single=true&output=csv',
+        simulado: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=355174482&single=true&output=csv'
+    },
+    comite: {
+        treino: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=906530203&single=true&output=csv',
+        simulado: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwzh_AGAvU-NfWBe84xzPBCcWc-DsKYsYVKWC-uLawLNGDSUaMwQZH3tp8NvlqKZymF3GENaise_sq/pub?gid=2116117343&single=true&output=csv'
+    }
+};
 
+
+let userSession = null;
+let selectedTypeKey = ''; 
 let rawQuestions = [], quiz = [], currentIdx = 0, answers = {}, strikethroughs = {}, isConfirmed = {}, mode = '';
 
-// 2. LÓGICA DE ACESSO
+function selectType(key, label) {
+    selectedTypeKey = key;
+    document.getElementById('selectedTitle').innerText = `MODO DE ESTUDO: ${label.toUpperCase()}`;
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+}
+
+function resetSteps() {
+    document.getElementById('step1').classList.remove('hidden');
+    document.getElementById('step2').classList.add('hidden');
+}
+
 function toggleAuth(isRegister) {
     document.getElementById('loginForm').classList.toggle('hidden', isRegister);
     document.getElementById('registerForm').classList.toggle('hidden', !isRegister);
@@ -219,12 +271,9 @@ async function handleRegister() {
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
     const nome = document.getElementById('regNome').value;
-
     if(!email || !password || !nome) return alert("Por favor, preencha todos os campos.");
-
     const { data, error } = await _supabase.auth.signUp({ email, password });
     if (error) return alert("Erro: " + error.message);
-
     if (data.user) {
         await _supabase.from('perfis').insert([{ id: data.user.id, nome_completo: nome, autorizado: false }]);
         alert("Solicitação enviada! O administrador autorizará seu acesso em breve.");
@@ -235,12 +284,9 @@ async function handleRegister() {
 async function handleLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-
     const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
     if (error) return alert("Credenciais inválidas ou erro de conexão.");
-
     const { data: perfil } = await _supabase.from('perfis').select('autorizado').eq('id', data.user.id).single();
-
     if (perfil?.autorizado) {
         userSession = data.user;
         document.getElementById('authScreen').classList.add('hidden');
@@ -251,18 +297,22 @@ async function handleLogin() {
     }
 }
 
-// 3. LÓGICA DO SIMULADOR
+// 3. INICIALIZAÇÃO COM SELEÇÃO DINÂMICA DE PLANILHA
 async function initApp(m) {
     mode = m;
+    // Pega a planilha baseada no tipo E no modo (treino ou simulado)
+    const URL_CSV = PLANILHAS[selectedTypeKey][mode];
+
     try {
         const response = await fetch(URL_CSV);
+        if (!response.ok) throw new Error("Erro ao carregar a planilha.");
         const csvText = await response.text();
         
         Papa.parse(csvText, {
             header: false,
             skipEmptyLines: true,
             complete: function(results) {
-                const data = results.data.slice(1); // Remove cabeçalho
+                const data = results.data.slice(1);
                 rawQuestions = data.map(r => ({
                     pergunta: r[0],
                     alts: [
@@ -278,16 +328,15 @@ async function initApp(m) {
             }
         });
     } catch (e) {
-        alert("Erro ao carregar banco de questões.");
+        alert("Erro ao carregar banco de questões deste modo.");
     }
 }
 
 function startQuiz() {
     quiz = rawQuestions.sort(() => 0.5 - Math.random()).slice(0, 20).map(q => ({
         ...q,
-        options: [...q.alts].sort(() => 0.5 - Math.random()) // Embaralha alternativas
+        options: [...q.alts].sort(() => 0.5 - Math.random())
     }));
-
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('quizScreen').classList.remove('hidden');
     render();
@@ -298,26 +347,20 @@ function render() {
     document.getElementById('questionText').innerText = q.pergunta;
     document.getElementById('themeTag').innerText = q.theme.toUpperCase();
     document.getElementById('qCounter').innerText = `QUESTÃO ${currentIdx + 1} DE 20`;
-    
     const box = document.getElementById('optionsBox'); box.innerHTML = '';
     const feedback = document.getElementById('feedbackArea'); feedback.innerHTML = '';
-
     q.options.forEach((opt, idx) => {
         const letter = String.fromCharCode(65 + idx);
         const isStruck = (strikethroughs[currentIdx] || []).includes(opt.text);
         const isSelected = answers[currentIdx] === opt.text;
-
         const row = document.createElement('div');
         row.className = `option-row ${isStruck ? 'strikethrough' : ''} ${isSelected ? 'selected' : ''}`;
-        
-        // No modo treino, se já confirmou, mostra as cores certas/erradas
         let extraStyle = "";
         if(mode === 'treino' && isConfirmed[currentIdx]) {
             if(opt.correct) extraStyle = "border: 2px solid #27ae60; background: #eafaf1;";
             else if(isSelected && !opt.correct) extraStyle = "border: 2px solid #e74c3c; background: #fdedec;";
         }
         if(extraStyle) row.style = extraStyle;
-
         row.innerHTML = `
             <button class="strike-btn ${isStruck ? 'active' : ''}" title="Desconsiderar" onclick="toggleStrike('${opt.text.replace(/'/g, "\\'")}')">
                 <i class="bi bi-eye-slash"></i>
@@ -327,7 +370,6 @@ function render() {
                 <div class="option-text">${opt.text}</div>
             </div>`;
         box.appendChild(row);
-
         if (mode === 'treino' && isConfirmed[currentIdx] && isSelected) {
             if (opt.correct) {
                 feedback.innerHTML = `<div class="feedback-box correct-bg"><i class="bi bi-check-circle-fill me-2"></i> Excelente! Você acertou.</div>`;
@@ -337,13 +379,10 @@ function render() {
             }
         }
     });
-
-    // Controle de botões
     document.getElementById('confirmBox').classList.toggle('hidden', !(mode === 'treino' && answers[currentIdx] && !isConfirmed[currentIdx]));
     document.getElementById('btnPrev').style.visibility = currentIdx === 0 ? 'hidden' : 'visible';
     document.getElementById('btnNext').classList.toggle('hidden', currentIdx === 19);
     document.getElementById('btnFinish').classList.toggle('hidden', !(currentIdx === 19));
-    
     updateSidebar();
 }
 
@@ -352,17 +391,14 @@ function selectOption(txt) {
     answers[currentIdx] = txt;
     render();
 }
-
 function confirmAnswer() {
     isConfirmed[currentIdx] = true;
     render();
 }
-
 function move(n) {
     currentIdx += n;
     render();
 }
-
 function toggleStrike(txt) {
     if (!strikethroughs[currentIdx]) strikethroughs[currentIdx] = [];
     const i = strikethroughs[currentIdx].indexOf(txt);
@@ -373,25 +409,21 @@ function toggleStrike(txt) {
     }
     render();
 }
-
 function updateSidebar() {
     const grid = document.getElementById('questionGrid'); grid.innerHTML = '';
     quiz.forEach((q, i) => {
         const b = document.createElement('button');
         let statusClass = answers[i] ? 'answered' : '';
-        
         if(mode === 'treino' && isConfirmed[i]) {
             const correctOpt = q.options.find(o => o.correct);
             statusClass = (answers[i] === correctOpt.text) ? 'correct' : 'wrong';
         }
-
         b.className = `q-btn ${i === currentIdx ? 'active' : ''} ${statusClass}`;
         b.innerText = i + 1;
         b.onclick = () => { currentIdx = i; render(); };
         grid.appendChild(b);
     });
 }
-
 function validateFinish() {
     const totalAnswered = Object.keys(answers).length;
     if (totalAnswered < 20) {
@@ -399,22 +431,18 @@ function validateFinish() {
     }
     showResults();
 }
-
 async function showResults() {
     let hits = 0;
     quiz.forEach((q, i) => {
         const correctOpt = q.options.find(o => o.correct);
         if (answers[i] === correctOpt?.text) hits++;
     });
-
     const p = Math.round((hits / 20) * 100);
     document.getElementById('quizScreen').classList.add('hidden');
     document.getElementById('sidebar').classList.add('hidden');
     document.getElementById('resultScreen').classList.remove('hidden');
-    
     document.getElementById('finalScore').innerText = `${p}%`;
     document.getElementById('finalDetails').innerText = `Você acertou ${hits} de 20 questões.`;
-    
     const status = document.getElementById('scoreStatus');
     if (p >= 70) {
         status.innerText = "APROVADO! VOCÊ ESTÁ PRONTO.";
@@ -423,16 +451,16 @@ async function showResults() {
         status.innerText = "REPROVADO (Mínimo 70%)";
         status.classList.add('bg-danger', 'text-white');
     }
-
-    // SALVA NO SUPABASE SEM SOBRESCREVER (Usando array ou log de texto)
     if (userSession) {
-        const logEntry = `[${new Date().toLocaleDateString()}] ${mode.toUpperCase()}: ${p}% (${hits}/20)`;
+        const logEntry = `[${new Date().toLocaleDateString()}] ${selectedTypeKey.toUpperCase()} - ${mode.toUpperCase()}: ${p}% (${hits}/20)`;
         const { data: perfil } = await _supabase.from('perfis').select('historico_notas').eq('id', userSession.id).single();
         const novoHistorico = perfil?.historico_notas ? perfil.historico_notas + " | " + logEntry : logEntry;
-        
         await _supabase.from('perfis').update({ historico_notas: novoHistorico }).eq('id', userSession.id);
     }
 }
 </script>
+<footer style="margin-top: 50px; padding: 20px; text-align: center;">
+    <a href="admin.html" style="color: #ccc; text-decoration: none; font-size: 10px;">Portal de Gestão</a>
+</footer>
 </body>
 </html>
