@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Master - GOIANAPREVI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; padding: 40px; font-family: 'Segoe UI', sans-serif; }
+        .admin-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        .auth-container { max-width: 400px; margin: 100px auto; }
+        .table thead { background: #1a2a6c; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="adminLogin" class="container auth-container">
+    <div class="admin-card text-center">
+        <h4 class="fw-bold mb-4">Acesso Restrito</h4>
+        <div class="mb-3 text-start">
+            <label class="form-label small fw-bold">Usuário Master</label>
+            <input type="email" id="masterEmail" class="form-control" placeholder="E-mail de administrador">
+        </div>
+        <div class="mb-3 text-start">
+            <label class="form-label small fw-bold">Senha</label>
+            <input type="password" id="masterPass" class="form-control">
+        </div>
+        <button class="btn btn-primary w-100 fw-bold py-2" onclick="handleMasterLogin()">ENTRAR</button>
+    </div>
+</div>
+
+<div class="container hidden" id="adminContent">
+    <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+                <h2 class="m-0 text-primary fw-bold">Gestão de Candidatos</h2>
+                <span class="badge bg-dark">Painel Master</span>
+            </div>
+            <div>
+                <button class="btn btn-outline-danger btn-sm me-2" onclick="handleLogout()">Sair</button>
+                <button class="btn btn-primary btn-sm" onclick="loadUsers()">Atualizar Dados</button>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Status</th>
+                        <th>Histórico</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="userTable">
+                    <tr><td colspan="4" class="text-center">Aguardando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    const SUPABASE_URL = 'https://ffkrgyostvypallnstdr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZma3JneW9zdHZ5cGFsbG5zdGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDQwOTAsImV4cCI6MjA5MTMyMDA5MH0.12VVVs1fwJzzZqNsanF05R44YOV5B9RJNsIJ8jPJ7eg';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Substitua pelo seu UID (ID de Usuário) que está no painel Authentication do Supabase
+    const ADMIN_UID = "2b700ad9-50a2-4b4e-8d07-12bb39c2b2f7"; 
+
+    async function handleMasterLogin() {
+        const email = document.getElementById('masterEmail').value;
+        const password = document.getElementById('masterPass').value;
+
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            alert("Falha no login: Verifique suas credenciais.");
+        } else if (data.user.id !== ADMIN_UID) {
+            alert("Acesso Negado: Este usuário não tem privilégios Master.");
+            await _supabase.auth.signOut();
+        } else {
+            checkSession();
+        }
+    }
+
+    async function checkSession() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        
+        if (session && session.user.id === ADMIN_UID) {
+            document.getElementById('adminLogin').classList.add('hidden');
+            document.getElementById('adminContent').classList.remove('hidden');
+            loadUsers();
+        } else if (session) {
+            // Caso alguém logue com conta comum nesta página
+            await _supabase.auth.signOut();
+        }
+    }
+
+    async function handleLogout() {
+        await _supabase.auth.signOut();
+        location.reload();
+    }
+
+    async function loadUsers() {
+        const { data, error } = await _supabase
+            .from('perfis')
+            .select('*')
+            .neq('id', ADMIN_UID) // Oculta você mesmo da lista de aprovação
+            .order('autorizado', { ascending: true });
+
+        if (error) return console.error(error);
+
+        const tbody = document.getElementById('userTable');
+        tbody.innerHTML = '';
+
+        data.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-bold text-secondary">${user.nome_completo}</td>
+                <td>
+                    <span class="badge ${user.autorizado ? 'bg-success' : 'bg-warning text-dark'}">
+                        ${user.autorizado ? 'AUTORIZADO' : 'PENDENTE'}
+                    </span>
+                </td>
+                <td class="small text-muted" style="max-width: 250px">${user.historico_notas || '-'}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm ${user.autorizado ? 'btn-outline-danger' : 'btn-success'} shadow-sm" 
+                            onclick="updateStatus('${user.id}', ${!user.autorizado})">
+                        ${user.autorizado ? 'Bloquear' : 'Autorizar'}
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    async function updateStatus(userId, status) {
+        const { data, error } = await _supabase
+            .from('perfis')
+            .update({ autorizado: status })
+            .eq('id', userId)
+            .select();
+
+        if (error) alert("Erro ao atualizar.");
+        if (data) loadUsers();
+    }
+
+    window.onload = checkSession;
+</script>
+</body>
+</html>
